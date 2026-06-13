@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Treehouse · Interactive 3D Model</title>
+<style>
+  :root{ --bg:#f3efe6; --panel:#fffdf8; --ink:#2a2118; --muted:#6b5f4f; --line:#e0d6c4; --accent:#b5651d; --good:#3f7d3f; }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+  #app{display:flex;height:100%}
+  #panel{width:330px;min-width:330px;height:100%;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:16px 16px 40px}
+  #stage{flex:1;position:relative}
+  canvas{display:block}
+  h1{font-size:17px;margin:0 0 2px}
+  .sub{font-size:12px;color:var(--muted);margin:0 0 14px}
+  .grp{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:#fffefb}
+  .grp h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 8px}
+  .knob{margin:9px 0}
+  .knob label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
+  .knob label b{color:var(--accent);font-variant-numeric:tabular-nums}
+  input[type=range]{width:100%;accent-color:var(--accent)}
+  select{width:100%;padding:5px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:13px}
+  .readout{font-size:12.5px;line-height:1.55}
+  .readout div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:2px 0}
+  .readout b{font-variant-numeric:tabular-nums}
+  .steplbl{font-size:13px;text-align:center;font-weight:700;color:var(--accent);margin-top:4px}
+  .toggles{display:flex;flex-wrap:wrap;gap:6px}
+  .toggles button{flex:1 0 44%;font-size:12px;padding:6px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
+  .toggles button.off{opacity:.4;text-decoration:line-through}
+  .row{display:flex;gap:8px}
+  .row button{flex:1;padding:7px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer;font-size:12.5px}
+  .hint{font-size:11px;color:var(--muted);margin-top:6px}
+  #badge{position:absolute;left:12px;top:12px;background:rgba(255,253,248,.9);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px}
+  #badge b{color:var(--accent)}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="panel">
+    <h1>🌳 Treehouse — 3D Model</h1>
+    <p class="sub">Drag to orbit · scroll to zoom. Change the knobs; everything recomputes live.</p>
+
+    <div class="grp">
+      <h2>The tree & the ground</h2>
+      <div class="knob"><label>Trunk diameter <b id="vDia">17.5"</b></label><input id="dia" type="range" min="6" max="36" step="0.5" value="17.5"></div>
+      <div class="knob"><label>Ground slope <b id="vSlope">15°</b></label><input id="slope" type="range" min="0" max="30" step="1" value="15"></div>
+    </div>
+
+    <div class="grp">
+      <h2>The platform</h2>
+      <div class="knob"><label>Width (cross-slope) <b id="vW">8.0 ft</b></label><input id="w" type="range" min="6" max="14" step="0.5" value="8"></div>
+      <div class="knob"><label>Depth (uphill→down) <b id="vD">8.0 ft</b></label><input id="d" type="range" min="6" max="14" step="0.5" value="8"></div>
+      <div class="knob"><label>Deck height (downhill edge) <b id="vH">54"</b></label><input id="h" type="range" min="24" max="96" step="1" value="54"></div>
+      <div class="knob"><label>Railing height <b id="vR">36"</b></label><input id="r" type="range" min="24" max="48" step="1" value="36"></div>
+      <div class="knob"><label>Joist spacing</label>
+        <select id="oc"><option value="12">12" o.c. (stiffest)</option><option value="16" selected>16" o.c. (standard)</option><option value="24">24" o.c. (light)</option></select>
+      </div>
+    </div>
+
+    <div class="grp">
+      <h2>Build step</h2>
+      <input id="step" type="range" min="1" max="8" step="1" value="8">
+      <div class="steplbl" id="stepLbl">8 · Finished</div>
+      <div class="knob" style="margin-top:10px"><label>Explode view <b id="vExp">0</b></label><input id="exp" type="range" min="0" max="100" step="1" value="0"></div>
+      <div class="row" style="margin-top:8px"><button id="prev">‹ prev</button><button id="next">next ›</button></div>
+    </div>
+
+    <div class="grp">
+      <h2>Show / hide</h2>
+      <div class="toggles" id="toggles"></div>
+    </div>
+
+    <div class="grp">
+      <h2>Computed (live)</h2>
+      <div class="readout" id="readout"></div>
+      <div class="hint">All lumber pressure-treated. Numbers are planning estimates — verify on site.</div>
+    </div>
+  </div>
+  <div id="stage"><div id="badge"></div></div>
+</div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const IN = 1/12;                         // inches -> feet (scene units = feet)
+const A = {                              // actual lumber dims (inches)
+  d2x8:7.25, t2x8:1.5, post:5.5, deck:1.0, rail2x4:1.5
+};
+const COL = { post:0x6b4a2a, beam:0x8a5a2b, joist:0xc89b6a, deck:0xd8b483,
+  rail:0x6b4a2a, trunk:0x8a8f72, footing:0x9a9a9a, ground:0x9cae7e, hot:0xc0392b };
+
+// ---- scene ----
+const stage=document.getElementById('stage');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0xeae6db);
+const cam=new THREE.PerspectiveCamera(45,1,0.1,500);
+cam.position.set(16,12,20);
+const rnd=new THREE.WebGLRenderer({antialias:true}); stage.appendChild(rnd.domElement);
+const ctr=new OrbitControls(cam,rnd.domElement); ctr.enableDamping=true; ctr.target.set(0,3,0);
+scene.add(new THREE.HemisphereLight(0xffffff,0x6b5f4f,0.9));
+const sun=new THREE.DirectionalLight(0xfff3df,1.0); sun.position.set(10,18,8); scene.add(sun);
+const sun2=new THREE.DirectionalLight(0xffffff,0.3); sun2.position.set(-12,8,-6); scene.add(sun2);
+
+function resize(){ const w=stage.clientWidth,h=stage.clientHeight; rnd.setSize(w,h); rnd.setPixelRatio(devicePixelRatio); cam.aspect=w/h; cam.updateProjectionMatrix(); }
+addEventListener('resize',resize);
+
+// ---- materials cache ----
+const mats={}; function mat(hex,hot){ const k=hex+(hot?'h':''); if(mats[k])return mats[k];
+  return mats[k]=new THREE.MeshStandardMaterial({color:hot?COL.hot:hex,roughness:.85,metalness:0}); }
+
+// ---- build groups by step ----
+const STEP_NAMES=['Footings','Posts','Beams','Joists','Tree opening','Decking','Railing','Ladder & steps','Finished'];
+const root=new THREE.Group(); scene.add(root);
+let groundMesh=null;
+const groups={}; for(let i=1;i<=8;i++){ groups[i]=new THREE.Group(); root.add(groups[i]); }
+const visible={1:1,2:1,3:1,4:1,5:1,6:1,7:1,8:1}; // user toggles
+
+// add a box by min-corner + size (all in INCHES), into step group
+function box(step,inX,inY,inZ, sx,sy,sz, hex, hot=false){
+  const g=new THREE.BoxGeometry(sx*IN,sy*IN,sz*IN);
+  const m=new THREE.Mesh(g,mat(hex,hot));
+  m.position.set((inX+sx/2)*IN,(inY+sy/2)*IN,(inZ+sz/2)*IN);
+  groups[step].add(m); return m;
+}
+
+const P={};
+function readParams(){
+  P.dia=+dia.value; P.slope=+slope.value; P.W=+w.value*12; P.D=+d.value*12;
+  P.Hdown=+h.value; P.rail=+r.value; P.oc=+oc.value; P.step=+step.value; P.exp=+exp.value/100;
+}
+
+function derive(){
+  P.drop = Math.tan(P.slope*Math.PI/180)*P.D;
+  P.deckTop = -P.drop + P.Hdown;          // y of deck top (inches), uphill grade=0
+  P.Hup = P.deckTop;                       // deck height above uphill grade
+  P.beamBot = P.deckTop - A.deck - A.d2x8 - A.d2x8; // joists on beams
+  P.open = P.dia + 8;                       // 4" clearance each side
+  // post x grid: spacing <= 48"
+  const nx=Math.max(2,Math.ceil(P.W/48)+1); P.px=[]; for(let i=0;i<nx;i++)P.px.push(P.W*i/(nx-1));
+  P.nx=nx;
+  // joists
+  P.jx=[]; for(let x=0;x<=P.W+0.1;x+=P.oc)P.jx.push(Math.min(x,P.W));
+  if(P.jx[P.jx.length-1]<P.W-0.1)P.jx.push(P.W);
+}
+
+function rebuild(){
+  readParams(); derive();
+  for(let i=1;i<=8;i++){ while(groups[i].children.length)groups[i].remove(groups[i].children[0]); }
+  const W=P.W,D=P.D, bb=P.beamBot, o0=W/2-P.open/2,o1=W/2+P.open/2, oz0=D/2-P.open/2,oz1=D/2+P.open/2;
+  const gradeZ=z=>-P.drop*(z/D);
+  const FOOT=42;
+  // 1 footings
+  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(1,px-4,g-FOOT,pz-4,8,FOOT,8,COL.footing,P.step===1); }
+  // 2 posts
+  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(2,px-A.post/2,g,pz-A.post/2,A.post,bb-g,A.post,COL.post,P.step===2); }
+  // 3 beams (doubled) along X at z=0 and z=D
+  for(const pz of [0,D]){ box(3,0,bb,pz-A.d2x8/2,W,A.d2x8,A.t2x8,COL.beam,P.step===3); box(3,0,bb,pz+A.d2x8/2-A.t2x8,W,A.d2x8,A.t2x8,COL.beam,P.step===3); }
+  // 4 joists along Z (split around opening)
+  for(const x of P.jx){ const inOpen=x>o0-1&&x<o1+1;
+    if(inOpen){ box(4,x-A.t2x8/2,bb+A.d2x8,0,A.t2x8,A.d2x8,oz0,COL.joist,P.step===4);
+                box(4,x-A.t2x8/2,bb+A.d2x8,oz1,A.t2x8,A.d2x8,D-oz1,COL.joist,P.step===4); }
+    else box(4,x-A.t2x8/2,bb+A.d2x8,0,A.t2x8,A.d2x8,D,COL.joist,P.step===4); }
+  // 5 opening framing + trunk
+  box(5,o0-A.t2x8,bb+A.d2x8,oz0,A.t2x8,A.d2x8,P.open,COL.beam,P.step===5);
+  box(5,o1,bb+A.d2x8,oz0,A.t2x8,A.d2x8,P.open,COL.beam,P.step===5);
+  box(5,o0,bb+A.d2x8,oz0-A.t2x8,P.open,A.d2x8,A.t2x8,COL.beam,P.step===5);
+  box(5,o0,bb+A.d2x8,oz1,P.open,A.d2x8,A.t2x8,COL.beam,P.step===5);
+  // trunk (cylinder) — always visible, lives in group 5
+  { const rr=P.dia/2*IN; const hgt=(P.deckTop+ P.drop + 170)*IN;
+    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr*1.15,hgt,20),mat(COL.trunk,false));
+    cyl.position.set(W/2*IN, (gradeZ(D/2)-40)*IN + hgt/2, D/2*IN); groups[5].add(cyl); }
+  // 6 deck (4 slabs around hole)
+  const z=P.deckTop-A.deck, hot6=P.step===6;
+  box(6,0,z,0,W,A.deck,oz0,COL.deck,hot6);
+  box(6,0,z,oz1,W,A.deck,D-oz1,COL.deck,hot6);
+  box(6,0,z,oz0,o0,A.deck,P.open,COL.deck,hot6);
+  box(6,o1,z,oz0,W-o1,A.deck,P.open,COL.deck,hot6);
+  // 7 railing
+  const hot7=P.step===7, rt=P.deckTop+P.rail;
+  const rposts=[[0,0],[W,0],[0,D],[W,D],[W/2,0],[0,D/2],[W,D/2]];
+  for(const [x,zz] of rposts) box(7,x-1.75,P.deckTop,zz-1.75,3.5,P.rail,3.5,COL.rail,hot7);
+  // top rails (thin boxes) around perimeter except a downhill entry gap
+  box(7,0,rt-A.rail2x4,0-A.rail2x4/2,W,A.rail2x4,A.rail2x4,COL.rail,hot7);          // uphill
+  box(7,0,rt-A.rail2x4,0,A.rail2x4,A.rail2x4,D,COL.rail,hot7);                       // left
+  box(7,W-A.rail2x4,rt-A.rail2x4,0,A.rail2x4,A.rail2x4,D,COL.rail,hot7);             // right
+  // 8 ladder downhill (proper leaning ladder from deck edge to ground)
+  const hot8=P.step===8, lx=W*0.62, lyTop=P.deckTop, gz=gradeZ(D), run=20, dy=lyTop-gz;
+  const len=Math.hypot(dy,run), ang=-Math.atan2(run,dy);
+  const addM=(g,sx,sy,sz,cx,cy,cz,hex,hot,rx=0)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(sx*IN,sy*IN,sz*IN),mat(hex,hot)); m.position.set(cx*IN,cy*IN,cz*IN); if(rx)m.rotation.x=rx; groups[g].add(m); };
+  for(const lxr of [lx, lx+14]) addM(8,1.5,len,1.5, lxr,(lyTop+gz)/2, D+run/2, COL.rail,hot8, ang);
+  for(let k=0;k<=4;k++){ const t=k/4; addM(8,15,1.2,2.0, lx+7, lyTop+(gz-lyTop)*t, D+run*t, COL.rail,hot8, ang); }
+
+  // ground plane (context; not step-gated)
+  if(groundMesh){ scene.remove(groundMesh); groundMesh.geometry.dispose(); }
+  groundMesh=new THREE.Mesh(new THREE.BoxGeometry(240*IN,1*IN,240*IN), new THREE.MeshStandardMaterial({color:COL.ground,roughness:1}));
+  groundMesh.position.set(W/2*IN,(gradeZ(D/2)-0.5)*IN,D/2*IN); groundMesh.rotation.x=Math.atan2(P.drop,P.D);
+  scene.add(groundMesh);
+
+  applyView();
+  updateReadout();
+}
+
+function applyView(){
+  for(let i=1;i<=8;i++){ groups[i].visible = (i<=P.step) && !!visible[i];
+    groups[i].position.y = P.exp * i * 1.4; }            // explode: lift later groups
+  // recentre target on platform mid-height
+  ctr.target.set(P.W/2*IN, (P.deckTop/2)*IN, P.D/2*IN);
+  badge.innerHTML = `Step <b>${P.step}/8</b> — ${STEP_NAMES[P.step-1]}`;
+}
+
+function updateReadout(){
+  vDia.textContent=P.dia+'"'; vSlope.textContent=P.slope+'°';
+  vW.textContent=(P.W/12).toFixed(1)+' ft'; vD.textContent=(P.D/12).toFixed(1)+' ft';
+  vH.textContent=P.Hdown+'"'; vR.textContent=P.rail+'"'; vExp.textContent=(P.exp*100|0);
+  stepLbl.textContent = P.step+' · '+STEP_NAMES[P.step-1];
+  const area=(P.W/12)*(P.D/12);
+  const joistCount=P.jx.length;
+  const deckBoards=Math.ceil(area/( (P.D/12)*(5.5/12) )); // 5/4x6 boards running cross
+  const postsTotal=P.nx*2;
+  const r=[
+    ['Grade drop across run', P.drop.toFixed(1)+'"'],
+    ['Deck height — uphill', P.Hup.toFixed(1)+'"'],
+    ['Deck height — downhill', P.Hdown+'"'],
+    ['Post (exposed) — uphill', (P.beamBot-0).toFixed(1)+'"'],
+    ['Post (exposed) — downhill', (P.beamBot-(-P.drop)).toFixed(1)+'"'],
+    ['Tree opening (sq)', P.open.toFixed(1)+'"'],
+    ['Clearance around trunk', '4" each side'],
+    ['Posts / footings', postsTotal],
+    ['Joists @'+P.oc+'" o.c.', joistCount],
+    ['Deck area', area.toFixed(0)+' sq ft'],
+    ['5/4×6 deck boards (≈)', deckBoards],
+    ['Beams', '2 × doubled 2×8'],
+  ];
+  readout.innerHTML=r.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+}
+
+// ---- toggles ----
+const tWrap=document.getElementById('toggles');
+STEP_NAMES.slice(0,8).forEach((n,i)=>{ const b=document.createElement('button'); b.textContent=n; b.dataset.i=i+1;
+  b.onclick=()=>{ const k=i+1; visible[k]=visible[k]?0:1; b.classList.toggle('off',!visible[k]); applyView(); };
+  tWrap.appendChild(b); });
+
+// ---- wire knobs ----
+['dia','slope','w','d','h','r','oc'].forEach(id=>document.getElementById(id).addEventListener('input',rebuild));
+['step','exp'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{readParams();derive();
+  // step/explode don't need full rebuild except hot-highlight depends on step -> rebuild for highlight
+  rebuild();}));
+document.getElementById('prev').onclick=()=>{ step.value=Math.max(1,+step.value-1); rebuild(); };
+document.getElementById('next').onclick=()=>{ step.value=Math.min(8,+step.value+1); rebuild(); };
+
+// query param presets (for headless screenshots): ?step=4&dia=20&slope=20...
+const q=new URLSearchParams(location.search);
+for(const id of ['dia','slope','w','d','h','r','oc','step','exp']) if(q.has(id)) document.getElementById(id).value=q.get(id);
+
+resize(); rebuild();
+(function loop(){ requestAnimationFrame(loop); ctr.update(); rnd.render(scene,cam); })();
+</script>
+</body>
+</html>

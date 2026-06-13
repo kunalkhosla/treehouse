@@ -1,0 +1,6 @@
+# ignore local junk
+.DS_Store
+
+# local-only notes — never push (kept out of git on purpose)
+*.LOCAL.md
+docs/*.LOCAL.md
