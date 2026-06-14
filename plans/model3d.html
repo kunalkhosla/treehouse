@@ -31,6 +31,8 @@
   .ok{color:var(--good)} .warn{color:var(--bad);font-weight:700}
   .steplbl{font-size:13px;text-align:center;font-weight:700;color:var(--accent);margin-top:4px}
   .row{display:flex;gap:8px;margin-top:8px} .row button{flex:1;padding:7px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer;font-size:12.5px}
+  .resetbtn{width:100%;padding:8px;border:1px solid var(--accent);color:var(--accent);border-radius:8px;background:#fff;cursor:pointer;font-size:13px;font-weight:600}
+  .resetbtn:hover{background:var(--accent);color:#fff}
   .toggles{display:flex;flex-wrap:wrap;gap:6px} .toggles button{flex:1 0 44%;font-size:12px;padding:6px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
   .toggles button.off{opacity:.4;text-decoration:line-through}
   .hint{font-size:11px;color:var(--muted);margin-top:6px}
@@ -45,6 +47,8 @@
   <div id="panel">
     <h1>🌳 Treehouse — 3D Model</h1>
     <p class="sub">Drag to orbit · scroll to zoom. Every knob recomputes live.</p>
+    <button id="resetAll" class="resetbtn">↺ Reset all to defaults</button>
+    <p class="hint" style="margin:5px 0 12px">Tip: double-click any slider to reset just that one.</p>
 
     <details class="grp" open><summary>Tree & ground</summary>
       <div class="knob"><label>Trunk diameter <b id="vDia">17.5"</b></label><input id="dia" type="range" min="6" max="36" step="0.5" value="17.5"></div>
@@ -295,6 +299,7 @@ function rebuild(){
       line(siteG,[W,P.deckTop+18,tz-13],[tx,P.deckTop+18,tz-13],COL_FIXED.rope); line(siteG,[W,P.deckTop+18,tz+13],[tx,P.deckTop+18,tz+13],COL_FIXED.rope); }
     if(P.bridge==='zip'){ line(siteG,[W/2,P.deckTop+60,tz],[tx,g+45,tz],COL_FIXED.hot); } }
   // ---- ground ----
+  if(groundMesh){ world.remove(groundMesh); groundMesh.geometry.dispose(); groundMesh.material.dispose(); }
   groundMesh=new THREE.Mesh(new THREE.BoxGeometry(300*IN,1*IN,300*IN), new THREE.MeshStandardMaterial({color:COL_FIXED.ground,roughness:1}));
   groundMesh.position.set(W/2*IN,(gradeZ(D/2)-0.5)*IN,D/2*IN); groundMesh.rotation.x=Math.atan2(P.drop,D); groundMesh.receiveShadow=SHADOWS; world.add(groundMesh);
   // ---- dimension overlay ----
@@ -369,6 +374,14 @@ document.getElementById('sun').addEventListener('input',()=>{readParams();setSun
 document.getElementById('autorot').addEventListener('input',()=>{readParams();applyView();});
 document.getElementById('prev').onclick=()=>{step.value=Math.max(1,+step.value-1);rebuild();};
 document.getElementById('next').onclick=()=>{step.value=Math.min(8,+step.value+1);rebuild();};
+
+// ---- reset to defaults ----
+const ctrlIds=[...allIds,'sun','autorot'];
+const DEFAULTS={}; ctrlIds.forEach(id=>{const el=document.getElementById(id); DEFAULTS[id]=el.type==='checkbox'?el.checked:el.value;});
+function setVal(id,v){ const el=document.getElementById(id); if(el.type==='checkbox')el.checked=v; else el.value=v; }
+function refresh(){ readParams(); rebuild(); setSun(); }
+ctrlIds.forEach(id=>document.getElementById(id).addEventListener('dblclick',()=>{ setVal(id,DEFAULTS[id]); refresh(); }));
+document.getElementById('resetAll').onclick=()=>{ ctrlIds.forEach(id=>setVal(id,DEFAULTS[id])); refresh(); };
 
 // query-param presets
 const q=new URLSearchParams(location.search);
