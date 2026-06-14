@@ -3,6 +3,10 @@
 A kids' treehouse built around a single mature tree on a sloped wooded lot (NJ).
 Start small (a solid platform), extensible later (roof, walls, climbing wall, bridge).
 
+### ▶️ [Open the interactive 3D model](https://kunalkhosla.github.io/treehouse/plans/model3d.html) &nbsp;·&nbsp; [Landing page](https://kunalkhosla.github.io/treehouse/) &nbsp;·&nbsp; [Printable plan (PDF)](Treehouse-Plan.pdf)
+
+> Drag to orbit · change tree diameter, slope, size, roof, walls… with a live span check.
+
 ## Status
 
 | Item | State |
