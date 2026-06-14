@@ -10,7 +10,7 @@ Start small (a solid platform), extensible later (roof, walls, climbing wall, br
 | Tree ID | Likely hickory **or** white ash — needs leaf/nut confirm (see [docs/tree-id.md](docs/tree-id.md)) |
 | EAB risk | Must rule out IF ash, before building |
 | Design | Phase 1 freestanding post platform, locked (see [docs/design.md](docs/design.md)) |
-| Drawings | 15 dimensioned SVGs + interactive 3D model + PDF (see [plans/](plans/)) |
+| Drawings | 15 dimensioned SVGs + interactive 3D model (knobs + live span check) + PDF (see [plans/](plans/)) |
 | Build | Not started |
 
 ## Key facts

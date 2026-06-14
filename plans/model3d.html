@@ -5,79 +5,114 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Treehouse · Interactive 3D Model</title>
 <style>
-  :root{ --bg:#f3efe6; --panel:#fffdf8; --ink:#2a2118; --muted:#6b5f4f; --line:#e0d6c4; --accent:#b5651d; --good:#3f7d3f; }
+  :root{ --bg:#f3efe6; --panel:#fffdf8; --ink:#2a2118; --muted:#6b5f4f; --line:#e0d6c4; --accent:#b5651d; --good:#3f7d3f; --bad:#c0392b; }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%;font-family:ui-sans-serif,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
   #app{display:flex;height:100%}
-  #panel{width:330px;min-width:330px;height:100%;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:16px 16px 40px}
+  #panel{width:340px;min-width:340px;height:100%;overflow-y:auto;background:var(--panel);border-right:1px solid var(--line);padding:14px 14px 60px}
   #stage{flex:1;position:relative}
   canvas{display:block}
-  h1{font-size:17px;margin:0 0 2px}
-  .sub{font-size:12px;color:var(--muted);margin:0 0 14px}
-  .grp{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px;background:#fffefb}
-  .grp h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 8px}
-  .knob{margin:9px 0}
+  h1{font-size:17px;margin:0 0 2px} .sub{font-size:12px;color:var(--muted);margin:0 0 12px}
+  details.grp{border:1px solid var(--line);border-radius:10px;padding:6px 12px;margin-bottom:10px;background:#fffefb}
+  details.grp[open]{padding-bottom:12px}
+  summary{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);cursor:pointer;padding:6px 0;font-weight:700;list-style:none}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:'▸ ';color:var(--accent)} details[open]>summary::before{content:'▾ '}
+  .knob{margin:8px 0}
   .knob label{display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px}
   .knob label b{color:var(--accent);font-variant-numeric:tabular-nums}
   input[type=range]{width:100%;accent-color:var(--accent)}
   select{width:100%;padding:5px;border:1px solid var(--line);border-radius:6px;background:#fff;font-size:13px}
-  .readout{font-size:12.5px;line-height:1.55}
+  .chk{display:flex;align-items:center;gap:7px;font-size:13px;margin:6px 0;cursor:pointer}
+  .chk input{accent-color:var(--accent);width:15px;height:15px}
+  .readout{font-size:12.5px;line-height:1.5}
   .readout div{display:flex;justify-content:space-between;border-bottom:1px dotted var(--line);padding:2px 0}
   .readout b{font-variant-numeric:tabular-nums}
+  .ok{color:var(--good)} .warn{color:var(--bad);font-weight:700}
   .steplbl{font-size:13px;text-align:center;font-weight:700;color:var(--accent);margin-top:4px}
-  .toggles{display:flex;flex-wrap:wrap;gap:6px}
-  .toggles button{flex:1 0 44%;font-size:12px;padding:6px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
+  .row{display:flex;gap:8px;margin-top:8px} .row button{flex:1;padding:7px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer;font-size:12.5px}
+  .toggles{display:flex;flex-wrap:wrap;gap:6px} .toggles button{flex:1 0 44%;font-size:12px;padding:6px;border:1px solid var(--line);border-radius:6px;background:#fff;cursor:pointer}
   .toggles button.off{opacity:.4;text-decoration:line-through}
-  .row{display:flex;gap:8px}
-  .row button{flex:1;padding:7px;border:1px solid var(--line);border-radius:7px;background:#fff;cursor:pointer;font-size:12.5px}
   .hint{font-size:11px;color:var(--muted);margin-top:6px}
-  #badge{position:absolute;left:12px;top:12px;background:rgba(255,253,248,.9);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px}
-  #badge b{color:var(--accent)}
+  #badge{position:absolute;left:12px;top:12px;background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:12px;max-width:60%}
+  #badge b{color:var(--accent)} #warnbar{color:var(--bad);font-weight:700;margin-top:3px;font-size:11.5px}
+  #cost{position:absolute;right:12px;top:12px;background:rgba(255,253,248,.92);border:1px solid var(--line);border-radius:8px;padding:6px 10px;font-size:13px}
+  #cost b{color:var(--accent);font-size:15px}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="panel">
     <h1>🌳 Treehouse — 3D Model</h1>
-    <p class="sub">Drag to orbit · scroll to zoom. Change the knobs; everything recomputes live.</p>
+    <p class="sub">Drag to orbit · scroll to zoom. Every knob recomputes live.</p>
 
-    <div class="grp">
-      <h2>The tree & the ground</h2>
+    <details class="grp" open><summary>Tree & ground</summary>
       <div class="knob"><label>Trunk diameter <b id="vDia">17.5"</b></label><input id="dia" type="range" min="6" max="36" step="0.5" value="17.5"></div>
+      <div class="knob"><label>Trunk clearance gap <b id="vGap">4"</b></label><input id="gap" type="range" min="2" max="10" step="0.5" value="4"></div>
       <div class="knob"><label>Ground slope <b id="vSlope">15°</b></label><input id="slope" type="range" min="0" max="30" step="1" value="15"></div>
-    </div>
+      <div class="knob"><label>Slope direction (rotate) <b id="vSdir">0°</b></label><input id="sdir" type="range" min="0" max="360" step="5" value="0"></div>
+    </details>
 
-    <div class="grp">
-      <h2>The platform</h2>
+    <details class="grp" open><summary>Platform</summary>
       <div class="knob"><label>Width (cross-slope) <b id="vW">8.0 ft</b></label><input id="w" type="range" min="6" max="14" step="0.5" value="8"></div>
       <div class="knob"><label>Depth (uphill→down) <b id="vD">8.0 ft</b></label><input id="d" type="range" min="6" max="14" step="0.5" value="8"></div>
       <div class="knob"><label>Deck height (downhill edge) <b id="vH">54"</b></label><input id="h" type="range" min="24" max="96" step="1" value="54"></div>
       <div class="knob"><label>Railing height <b id="vR">36"</b></label><input id="r" type="range" min="24" max="48" step="1" value="36"></div>
-      <div class="knob"><label>Joist spacing</label>
-        <select id="oc"><option value="12">12" o.c. (stiffest)</option><option value="16" selected>16" o.c. (standard)</option><option value="24">24" o.c. (light)</option></select>
-      </div>
-    </div>
+      <div class="knob"><label>Baluster gap <b id="vBg">3.5"</b></label><input id="bg" type="range" min="2" max="6" step="0.25" value="3.5"></div>
+    </details>
 
-    <div class="grp">
-      <h2>Build step</h2>
+    <details class="grp"><summary>Engineering / lumber</summary>
+      <div class="knob"><label>Posts per beam line <b id="vPpl">3</b></label><input id="ppl" type="range" min="2" max="5" step="1" value="3"></div>
+      <div class="knob"><label>Post size</label><select id="postSize"><option>4x4</option><option selected>6x6</option></select></div>
+      <div class="knob"><label>Beam (doubled)</label><select id="beamSize"><option>2x6</option><option selected>2x8</option><option>2x10</option></select></div>
+      <div class="knob"><label>Joist size</label><select id="joistSize"><option>2x6</option><option selected>2x8</option><option>2x10</option></select></div>
+      <div class="knob"><label>Joist spacing</label><select id="oc"><option value="12">12" o.c.</option><option value="16" selected>16" o.c.</option><option value="24">24" o.c.</option></select></div>
+      <div class="knob"><label>Footing depth <b id="vFoot">42"</b></label><input id="foot" type="range" min="12" max="54" step="2" value="42"></div>
+    </details>
+
+    <details class="grp"><summary>Features (Phase 2–3)</summary>
+      <div class="knob"><label>Roof</label><select id="roof"><option value="none" selected>none</option><option value="canopy">shade canopy</option><option value="shed">shed roof</option><option value="gable">gable roof</option></select></div>
+      <div class="knob"><label>Roof pitch <b id="vPitch">4 / 12</b></label><input id="pitch" type="range" min="0" max="12" step="1" value="4"></div>
+      <div class="knob"><label>Walls</label><select id="walls"><option value="none" selected>none</option><option value="half">half-walls</option><option value="full">full + window</option></select></div>
+      <div class="knob"><label>Access</label><select id="access"><option value="ladder" selected>ladder (downhill)</option><option value="stairs">stairs (uphill)</option></select></div>
+      <label class="chk"><input type="checkbox" id="trapdoor"> Trapdoor entry</label>
+      <label class="chk"><input type="checkbox" id="slide"> Slide</label>
+      <label class="chk"><input type="checkbox" id="climb"> Climbing wall</label>
+      <label class="chk"><input type="checkbox" id="sandbox"> Sandbox underneath</label>
+    </details>
+
+    <details class="grp"><summary>Site & scale</summary>
+      <label class="chk"><input type="checkbox" id="kid" checked> Kid for scale</label>
+      <div class="knob"><label>Kid height <b id="vKid">48"</b></label><input id="kidh" type="range" min="34" max="64" step="1" value="48"></div>
+      <label class="chk"><input type="checkbox" id="tree2"> Second tree</label>
+      <div class="knob"><label>2nd tree distance <b id="vT2">90"</b></label><input id="t2d" type="range" min="48" max="200" step="6" value="90"></div>
+      <div class="knob"><label>Bridge to 2nd tree</label><select id="bridge"><option value="none" selected>none</option><option value="rope">rope bridge</option><option value="zip">zipline</option></select></div>
+    </details>
+
+    <details class="grp"><summary>Visual / UX</summary>
+      <div class="knob"><label>Sun / time of day <b id="vSun">noon</b></label><input id="sun" type="range" min="0" max="100" step="1" value="55"></div>
+      <label class="chk"><input type="checkbox" id="shadows" checked> Shadows</label>
+      <label class="chk"><input type="checkbox" id="dims"> Dimension overlay</label>
+      <label class="chk"><input type="checkbox" id="autorot"> Auto-rotate</label>
+      <label class="chk"><input type="checkbox" id="xray"> X-ray (wireframe)</label>
+      <div class="knob"><label>Material</label><select id="theme"><option value="cedar" selected>cedar / natural</option><option value="pt">pressure-treated (green)</option><option value="paint">painted</option></select></div>
+    </details>
+
+    <details class="grp" open><summary>Build step</summary>
       <input id="step" type="range" min="1" max="8" step="1" value="8">
       <div class="steplbl" id="stepLbl">8 · Finished</div>
       <div class="knob" style="margin-top:10px"><label>Explode view <b id="vExp">0</b></label><input id="exp" type="range" min="0" max="100" step="1" value="0"></div>
-      <div class="row" style="margin-top:8px"><button id="prev">‹ prev</button><button id="next">next ›</button></div>
-    </div>
+      <div class="row"><button id="prev">‹ prev</button><button id="next">next ›</button></div>
+    </details>
 
-    <div class="grp">
-      <h2>Show / hide</h2>
-      <div class="toggles" id="toggles"></div>
-    </div>
+    <details class="grp"><summary>Show / hide layers</summary><div class="toggles" id="toggles"></div></details>
 
-    <div class="grp">
-      <h2>Computed (live)</h2>
+    <details class="grp" open><summary>Computed (live)</summary>
       <div class="readout" id="readout"></div>
-      <div class="hint">All lumber pressure-treated. Numbers are planning estimates — verify on site.</div>
-    </div>
+      <div class="hint">Span checks are rule-of-thumb (#2 SPF/PT, ~40 psf). Confirm with a span table / pro before building.</div>
+    </details>
   </div>
-  <div id="stage"><div id="badge"></div></div>
+  <div id="stage"><div id="badge"></div><div id="cost"></div></div>
 </div>
 
 <script type="importmap">
@@ -90,176 +125,256 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-const IN = 1/12;                         // inches -> feet (scene units = feet)
-const A = {                              // actual lumber dims (inches)
-  d2x8:7.25, t2x8:1.5, post:5.5, deck:1.0, rail2x4:1.5
+const IN=1/12;                                   // inches -> feet (scene = feet)
+const LUM={ '2x6':{d:5.5,t:1.5}, '2x8':{d:7.25,t:1.5}, '2x10':{d:9.25,t:1.5} };
+const POSTW={ '4x4':3.5, '6x6':5.5 };
+// allowable joist span (inches) #2 SPF, 40psf live
+const JSPAN={ '2x6':{12:129,16:111,24:90}, '2x8':{12:170,16:145,24:118}, '2x10':{12:216,16:185,24:151} };
+// rule-of-thumb max post spacing (inches) for a DOUBLED beam
+const BSPAN={ '2x6':48, '2x8':72, '2x10':96 };
+const PRICE={ '6x6':40,'4x4':15, '2x6':9,'2x8':14,'2x10':20, deck:9, bal:4, rail:7, bag:6, tube:10, base:12, hwLump:120 };
+
+// themes
+const THEMES={
+  cedar:{post:0x6b4a2a,beam:0x8a5a2b,joist:0xc89b6a,deck:0xd8b483,rail:0x6b4a2a,wall:0xcaa472,roof:0x7a4a2a},
+  pt:{post:0x7d7a4e,beam:0x8a8552,joist:0xa6a06a,deck:0xb8b27a,rail:0x7d7a4e,wall:0x9aa06a,roof:0x6f7a4a},
+  paint:{post:0xeae6dc,beam:0xddd8cc,joist:0xcfc8b8,deck:0xb8b3a8,rail:0xeae6dc,wall:0xf2efe8,roof:0x9c5a4a},
 };
-const COL = { post:0x6b4a2a, beam:0x8a5a2b, joist:0xc89b6a, deck:0xd8b483,
-  rail:0x6b4a2a, trunk:0x8a8f72, footing:0x9a9a9a, ground:0x9cae7e, hot:0xc0392b };
+let THEME='cedar', XRAY=false, SHADOWS=true;
+const COL_FIXED={ trunk:0x8a8f72, footing:0x9a9a9a, ground:0x9cae7e, hot:0xc0392b,
+  slide:0xc0392b, climb:0x356, sand:0xd9c08a, kid:0x2d6cb5, rope:0x5a4632 };
 
 // ---- scene ----
 const stage=document.getElementById('stage');
 const scene=new THREE.Scene(); scene.background=new THREE.Color(0xeae6db);
-const cam=new THREE.PerspectiveCamera(45,1,0.1,500);
-cam.position.set(16,12,20);
+const cam=new THREE.PerspectiveCamera(45,1,0.1,800); cam.position.set(17,13,21);
 const rnd=new THREE.WebGLRenderer({antialias:true}); stage.appendChild(rnd.domElement);
+rnd.shadowMap.enabled=true; rnd.shadowMap.type=THREE.PCFSoftShadowMap;
 const ctr=new OrbitControls(cam,rnd.domElement); ctr.enableDamping=true; ctr.target.set(0,3,0);
-scene.add(new THREE.HemisphereLight(0xffffff,0x6b5f4f,0.9));
-const sun=new THREE.DirectionalLight(0xfff3df,1.0); sun.position.set(10,18,8); scene.add(sun);
-const sun2=new THREE.DirectionalLight(0xffffff,0.3); sun2.position.set(-12,8,-6); scene.add(sun2);
-
+const hemi=new THREE.HemisphereLight(0xffffff,0x6b5f4f,0.75); scene.add(hemi);
+const sun=new THREE.DirectionalLight(0xfff3df,1.1); sun.castShadow=true; scene.add(sun);
+sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-15; sun.shadow.camera.right=15;
+sun.shadow.camera.top=15; sun.shadow.camera.bottom=-15; sun.shadow.camera.far=80;
+const fill=new THREE.DirectionalLight(0xffffff,0.25); fill.position.set(-12,8,-6); scene.add(fill);
 function resize(){ const w=stage.clientWidth,h=stage.clientHeight; rnd.setSize(w,h); rnd.setPixelRatio(devicePixelRatio); cam.aspect=w/h; cam.updateProjectionMatrix(); }
 addEventListener('resize',resize);
 
-// ---- materials cache ----
-const mats={}; function mat(hex,hot){ const k=hex+(hot?'h':''); if(mats[k])return mats[k];
-  return mats[k]=new THREE.MeshStandardMaterial({color:hot?COL.hot:hex,roughness:.85,metalness:0}); }
-
-// ---- build groups by step ----
-const STEP_NAMES=['Footings','Posts','Beams','Joists','Tree opening','Decking','Railing','Ladder & steps','Finished'];
-const root=new THREE.Group(); scene.add(root);
-let groundMesh=null;
+// world (rotates for slope direction) -> root (step groups explode) + extras
+const world=new THREE.Group(); scene.add(world);
+const root=new THREE.Group(); world.add(root);
 const groups={}; for(let i=1;i<=8;i++){ groups[i]=new THREE.Group(); root.add(groups[i]); }
-const visible={1:1,2:1,3:1,4:1,5:1,6:1,7:1,8:1}; // user toggles
+const featG=new THREE.Group(), siteG=new THREE.Group(), dimG=new THREE.Group();
+world.add(featG); world.add(siteG); world.add(dimG);
+let groundMesh=null;
+const visible={1:1,2:1,3:1,4:1,5:1,6:1,7:1,8:1};
 
-// add a box by min-corner + size (all in INCHES), into step group
-function box(step,inX,inY,inZ, sx,sy,sz, hex, hot=false){
-  const g=new THREE.BoxGeometry(sx*IN,sy*IN,sz*IN);
-  const m=new THREE.Mesh(g,mat(hex,hot));
-  m.position.set((inX+sx/2)*IN,(inY+sy/2)*IN,(inZ+sz/2)*IN);
-  groups[step].add(m); return m;
-}
+let mats={};
+function mat(hex,hot){ const k=hex+'|'+(hot?'h':'')+THEME+XRAY; if(mats[k])return mats[k];
+  return mats[k]=new THREE.MeshStandardMaterial({color:hot?COL_FIXED.hot:hex,roughness:.85,metalness:0,wireframe:XRAY}); }
+function clearMats(){ mats={}; }
+
+// box by min-corner + size (inches) into a group
+function box(g,x,y,z,sx,sy,sz,hex,opt={}){
+  const m=new THREE.Mesh(new THREE.BoxGeometry(sx*IN,sy*IN,sz*IN),mat(hex,opt.hot));
+  m.position.set((x+sx/2)*IN,(y+sy/2)*IN,(z+sz/2)*IN);
+  if(opt.rotX)m.rotation.x=opt.rotX; if(opt.rotZ)m.rotation.z=opt.rotZ;
+  m.castShadow=SHADOWS; m.receiveShadow=SHADOWS; g.add(m); return m; }
+function cyl(g,x,y,z,r,h,hex,seg=18){ const m=new THREE.Mesh(new THREE.CylinderGeometry(r*IN,r*1.12*IN,h*IN,seg),mat(hex)); m.position.set(x*IN,(y+h/2)*IN,z*IN); m.castShadow=SHADOWS; g.add(m); return m; }
+function line(g,a,b,hex){ const geo=new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(a[0]*IN,a[1]*IN,a[2]*IN),new THREE.Vector3(b[0]*IN,b[1]*IN,b[2]*IN)]); g.add(new THREE.Line(geo,new THREE.LineBasicMaterial({color:hex}))); }
+function sprite(g,text,x,y,z){ const c=document.createElement('canvas'); c.width=256;c.height=64; const cx=c.getContext('2d');
+  cx.fillStyle='rgba(255,253,248,.9)';cx.fillRect(0,0,256,64); cx.fillStyle='#1d6fb8';cx.font='bold 34px sans-serif';cx.textAlign='center';cx.textBaseline='middle';cx.fillText(text,128,32);
+  const t=new THREE.CanvasTexture(c); const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false})); s.position.set(x*IN,y*IN,z*IN); s.scale.set(2.4,0.6,1); g.add(s); }
 
 const P={};
 function readParams(){
-  P.dia=+dia.value; P.slope=+slope.value; P.W=+w.value*12; P.D=+d.value*12;
-  P.Hdown=+h.value; P.rail=+r.value; P.oc=+oc.value; P.step=+step.value; P.exp=+exp.value/100;
+  const g=id=>document.getElementById(id);
+  P.dia=+g('dia').value; P.gap=+g('gap').value; P.slope=+g('slope').value; P.sdir=+g('sdir').value;
+  P.W=+g('w').value*12; P.D=+g('d').value*12; P.Hdown=+g('h').value; P.rail=+g('r').value; P.bg=+g('bg').value;
+  P.ppl=+g('ppl').value; P.postSize=g('postSize').value; P.beamSize=g('beamSize').value; P.joistSize=g('joistSize').value; P.oc=+g('oc').value; P.foot=+g('foot').value;
+  P.roof=g('roof').value; P.pitch=+g('pitch').value; P.walls=g('walls').value; P.access=g('access').value;
+  P.trapdoor=g('trapdoor').checked; P.slide=g('slide').checked; P.climb=g('climb').checked; P.sandbox=g('sandbox').checked;
+  P.kid=g('kid').checked; P.kidh=+g('kidh').value; P.tree2=g('tree2').checked; P.t2d=+g('t2d').value; P.bridge=g('bridge').value;
+  P.sun=+g('sun').value; P.shadows=g('shadows').checked; P.dims=g('dims').checked; P.autorot=g('autorot').checked; P.xray=g('xray').checked; P.theme=g('theme').value;
+  P.step=+g('step').value; P.exp=+g('exp').value/100;
 }
-
 function derive(){
-  P.drop = Math.tan(P.slope*Math.PI/180)*P.D;
-  P.deckTop = -P.drop + P.Hdown;          // y of deck top (inches), uphill grade=0
-  P.Hup = P.deckTop;                       // deck height above uphill grade
-  P.beamBot = P.deckTop - A.deck - A.d2x8 - A.d2x8; // joists on beams
-  P.open = P.dia + 8;                       // 4" clearance each side
-  // post x grid: spacing <= 48"
-  const nx=Math.max(2,Math.ceil(P.W/48)+1); P.px=[]; for(let i=0;i<nx;i++)P.px.push(P.W*i/(nx-1));
-  P.nx=nx;
-  // joists
-  P.jx=[]; for(let x=0;x<=P.W+0.1;x+=P.oc)P.jx.push(Math.min(x,P.W));
-  if(P.jx[P.jx.length-1]<P.W-0.1)P.jx.push(P.W);
+  P.bd=LUM[P.beamSize].d; P.bt=LUM[P.beamSize].t; P.jd=LUM[P.joistSize].d; P.jt=LUM[P.joistSize].t; P.pw=POSTW[P.postSize];
+  P.drop=Math.tan(P.slope*Math.PI/180)*P.D;
+  P.deckTop=-P.drop+P.Hdown; P.Hup=P.deckTop;
+  P.beamBot=P.deckTop-1-P.jd-P.bd;
+  P.open=P.dia+2*P.gap;
+  P.px=[]; for(let i=0;i<P.ppl;i++)P.px.push(P.W*i/(P.ppl-1));
+  P.postSpacing=P.W/(P.ppl-1);
+  P.jx=[]; for(let x=0;x<=P.W+0.1;x+=P.oc)P.jx.push(Math.min(x,P.W)); if(P.jx[P.jx.length-1]<P.W-0.1)P.jx.push(P.W);
+  // span checks
+  P.jAllow=JSPAN[P.joistSize][P.oc]; P.joistOK=P.D<=P.jAllow;
+  P.bAllow=BSPAN[P.beamSize]; P.beamOK=P.postSpacing<=P.bAllow;
 }
 
 function rebuild(){
-  readParams(); derive();
-  for(let i=1;i<=8;i++){ while(groups[i].children.length)groups[i].remove(groups[i].children[0]); }
-  const W=P.W,D=P.D, bb=P.beamBot, o0=W/2-P.open/2,o1=W/2+P.open/2, oz0=D/2-P.open/2,oz1=D/2+P.open/2;
-  const gradeZ=z=>-P.drop*(z/D);
-  const FOOT=42;
+  readParams(); derive(); THEME=P.theme; XRAY=P.xray; SHADOWS=P.shadows; clearMats();
+  rnd.shadowMap.enabled=SHADOWS;
+  for(let i=1;i<=8;i++) while(groups[i].children.length)groups[i].remove(groups[i].children[0]);
+  for(const G of [featG,siteG,dimG]) while(G.children.length)G.remove(G.children[0]);
+  const T=THEMES[THEME];
+  const W=P.W,D=P.D,bb=P.beamBot, o0=W/2-P.open/2,o1=W/2+P.open/2,oz0=D/2-P.open/2,oz1=D/2+P.open/2;
+  const gradeZ=z=>-P.drop*(z/D), hotS=s=>P.step===s;
   // 1 footings
-  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(1,px-4,g-FOOT,pz-4,8,FOOT,8,COL.footing,P.step===1); }
+  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(groups[1],px-4,g-P.foot,pz-4,8,P.foot,8,COL_FIXED.footing,{hot:hotS(1)}); }
   // 2 posts
-  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(2,px-A.post/2,g,pz-A.post/2,A.post,bb-g,A.post,COL.post,P.step===2); }
-  // 3 beams (doubled) along X at z=0 and z=D
-  for(const pz of [0,D]){ box(3,0,bb,pz-A.d2x8/2,W,A.d2x8,A.t2x8,COL.beam,P.step===3); box(3,0,bb,pz+A.d2x8/2-A.t2x8,W,A.d2x8,A.t2x8,COL.beam,P.step===3); }
-  // 4 joists along Z (split around opening)
-  for(const x of P.jx){ const inOpen=x>o0-1&&x<o1+1;
-    if(inOpen){ box(4,x-A.t2x8/2,bb+A.d2x8,0,A.t2x8,A.d2x8,oz0,COL.joist,P.step===4);
-                box(4,x-A.t2x8/2,bb+A.d2x8,oz1,A.t2x8,A.d2x8,D-oz1,COL.joist,P.step===4); }
-    else box(4,x-A.t2x8/2,bb+A.d2x8,0,A.t2x8,A.d2x8,D,COL.joist,P.step===4); }
+  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(groups[2],px-P.pw/2,g,pz-P.pw/2,P.pw,bb-g,P.pw,T.post,{hot:hotS(2)}); }
+  // 3 beams (doubled)
+  const bcol=P.beamOK?T.beam:COL_FIXED.hot;
+  for(const pz of [0,D]){ box(groups[3],0,bb,pz-P.bd/2,W,P.bd,P.bt,bcol,{hot:hotS(3)}); box(groups[3],0,bb,pz+P.bd/2-P.bt,W,P.bd,P.bt,bcol,{hot:hotS(3)}); }
+  // 4 joists
+  const jtop=bb+P.bd, jcol=P.joistOK?T.joist:COL_FIXED.hot;
+  for(const x of P.jx){ const io=x>o0-1&&x<o1+1;
+    if(io){ box(groups[4],x-P.jt/2,jtop,0,P.jt,P.jd,oz0,jcol,{hot:hotS(4)}); box(groups[4],x-P.jt/2,jtop,oz1,P.jt,P.jd,D-oz1,jcol,{hot:hotS(4)}); }
+    else box(groups[4],x-P.jt/2,jtop,0,P.jt,P.jd,D,jcol,{hot:hotS(4)}); }
   // 5 opening framing + trunk
-  box(5,o0-A.t2x8,bb+A.d2x8,oz0,A.t2x8,A.d2x8,P.open,COL.beam,P.step===5);
-  box(5,o1,bb+A.d2x8,oz0,A.t2x8,A.d2x8,P.open,COL.beam,P.step===5);
-  box(5,o0,bb+A.d2x8,oz0-A.t2x8,P.open,A.d2x8,A.t2x8,COL.beam,P.step===5);
-  box(5,o0,bb+A.d2x8,oz1,P.open,A.d2x8,A.t2x8,COL.beam,P.step===5);
-  // trunk (cylinder) — always visible, lives in group 5
-  { const rr=P.dia/2*IN; const hgt=(P.deckTop+ P.drop + 170)*IN;
-    const cyl=new THREE.Mesh(new THREE.CylinderGeometry(rr,rr*1.15,hgt,20),mat(COL.trunk,false));
-    cyl.position.set(W/2*IN, (gradeZ(D/2)-40)*IN + hgt/2, D/2*IN); groups[5].add(cyl); }
-  // 6 deck (4 slabs around hole)
-  const z=P.deckTop-A.deck, hot6=P.step===6;
-  box(6,0,z,0,W,A.deck,oz0,COL.deck,hot6);
-  box(6,0,z,oz1,W,A.deck,D-oz1,COL.deck,hot6);
-  box(6,0,z,oz0,o0,A.deck,P.open,COL.deck,hot6);
-  box(6,o1,z,oz0,W-o1,A.deck,P.open,COL.deck,hot6);
+  box(groups[5],o0-P.jt,jtop,oz0,P.jt,P.jd,P.open,T.beam,{hot:hotS(5)});
+  box(groups[5],o1,jtop,oz0,P.jt,P.jd,P.open,T.beam,{hot:hotS(5)});
+  box(groups[5],o0,jtop,oz0-P.jt,P.open,P.jd,P.jt,T.beam,{hot:hotS(5)});
+  box(groups[5],o0,jtop,oz1,P.open,P.jd,P.jt,T.beam,{hot:hotS(5)});
+  cyl(groups[5],W/2,gradeZ(D/2)-40,D/2,P.dia/2,P.deckTop+P.drop+190,COL_FIXED.trunk);
+  // 6 deck
+  const dz=P.deckTop-1, dcol=T.deck;
+  box(groups[6],0,dz,0,W,1,oz0,dcol,{hot:hotS(6)}); box(groups[6],0,dz,oz1,W,1,D-oz1,dcol,{hot:hotS(6)});
+  box(groups[6],0,dz,oz0,o0,1,P.open,dcol,{hot:hotS(6)}); box(groups[6],o1,dz,oz0,W-o1,1,P.open,dcol,{hot:hotS(6)});
+  if(P.trapdoor){ box(groups[6],W*0.12,dz+0.2,D-30,24,0.8,24,0x6b4a2a); box(groups[6],W*0.12,P.deckTop,D-30,24,1,2,0x6b4a2a,{rotX:-0.9}); }
   // 7 railing
-  const hot7=P.step===7, rt=P.deckTop+P.rail;
-  const rposts=[[0,0],[W,0],[0,D],[W,D],[W/2,0],[0,D/2],[W,D/2]];
-  for(const [x,zz] of rposts) box(7,x-1.75,P.deckTop,zz-1.75,3.5,P.rail,3.5,COL.rail,hot7);
-  // top rails (thin boxes) around perimeter except a downhill entry gap
-  box(7,0,rt-A.rail2x4,0-A.rail2x4/2,W,A.rail2x4,A.rail2x4,COL.rail,hot7);          // uphill
-  box(7,0,rt-A.rail2x4,0,A.rail2x4,A.rail2x4,D,COL.rail,hot7);                       // left
-  box(7,W-A.rail2x4,rt-A.rail2x4,0,A.rail2x4,A.rail2x4,D,COL.rail,hot7);             // right
-  // 8 ladder downhill (proper leaning ladder from deck edge to ground)
-  const hot8=P.step===8, lx=W*0.62, lyTop=P.deckTop, gz=gradeZ(D), run=20, dy=lyTop-gz;
-  const len=Math.hypot(dy,run), ang=-Math.atan2(run,dy);
-  const addM=(g,sx,sy,sz,cx,cy,cz,hex,hot,rx=0)=>{ const m=new THREE.Mesh(new THREE.BoxGeometry(sx*IN,sy*IN,sz*IN),mat(hex,hot)); m.position.set(cx*IN,cy*IN,cz*IN); if(rx)m.rotation.x=rx; groups[g].add(m); };
-  for(const lxr of [lx, lx+14]) addM(8,1.5,len,1.5, lxr,(lyTop+gz)/2, D+run/2, COL.rail,hot8, ang);
-  for(let k=0;k<=4;k++){ const t=k/4; addM(8,15,1.2,2.0, lx+7, lyTop+(gz-lyTop)*t, D+run*t, COL.rail,hot8, ang); }
-
-  // ground plane (context; not step-gated)
-  if(groundMesh){ scene.remove(groundMesh); groundMesh.geometry.dispose(); }
-  groundMesh=new THREE.Mesh(new THREE.BoxGeometry(240*IN,1*IN,240*IN), new THREE.MeshStandardMaterial({color:COL.ground,roughness:1}));
-  groundMesh.position.set(W/2*IN,(gradeZ(D/2)-0.5)*IN,D/2*IN); groundMesh.rotation.x=Math.atan2(P.drop,P.D);
-  scene.add(groundMesh);
-
-  applyView();
-  updateReadout();
+  const rt=P.deckTop+P.rail;
+  for(const [x,zz] of [[0,0],[W,0],[0,D],[W,D],[W/2,0],[0,D/2],[W,D/2]]) box(groups[7],x-1.75,P.deckTop,zz-1.75,3.5,P.rail,3.5,T.rail,{hot:hotS(7)});
+  box(groups[7],0,rt-1.5,-0.75,W,1.5,1.5,T.rail,{hot:hotS(7)});
+  box(groups[7],0,rt-1.5,0,1.5,1.5,D,T.rail,{hot:hotS(7)}); box(groups[7],W-1.5,rt-1.5,0,1.5,1.5,D,T.rail,{hot:hotS(7)});
+  // balusters along the 3 railed sides
+  const bstep=1.5+P.bg; for(let x=bstep;x<W-2;x+=bstep){ box(groups[7],x,P.deckTop,-0.75,1.5,P.rail,1.5,T.rail); }
+  // ---- step 8 + features (only on finished build) ----
+  if(P.step===8){
+    // access
+    if(P.access==='ladder'){ const lx=W*0.62,lyTop=P.deckTop,gz=gradeZ(D),run=20,dy=lyTop-gz,len=Math.hypot(dy,run),ang=-Math.atan2(run,dy);
+      for(const off of [0,14]) box(featG,lx+off-0.75,(lyTop+gz)/2-len/2,D+run/2-0.75,1.5,len,1.5,T.rail,{rotX:ang});
+      for(let k=0;k<=4;k++){const t=k/4; box(featG,lx,P.deckTop+(gz-lyTop)*t-0.6,D+run*t,15,1.2,2,T.rail,{rotX:ang});}
+    } else { // stairs uphill
+      const n=4, gz=gradeZ(0), rise=(P.deckTop-gz)/n, runS=10;
+      for(let k=0;k<n;k++) box(featG,W*0.3,gz+rise*k,-runS*(k+1),22,1.5,runS,T.deck);
+    }
+    // roof
+    if(P.roof!=='none'){ const rh=P.deckTop+78, rcol=T.roof;
+      for(const [x,zz] of [[3,3],[W-3,3],[3,D-3],[W-3,D-3]]) box(featG,x-1.75,P.deckTop,zz-1.75,3.5,78,3.5,T.post);
+      if(P.roof==='canopy') box(featG,-6,rh,-6,W+12,2,D+12,rcol);
+      if(P.roof==='shed'){ const riseR=P.pitch/12*D; box(featG,-6,rh,-6,W+12,2,D+12,rcol,{rotX:Math.atan2(riseR,D)}); }
+      if(P.roof==='gable'){ const riseR=P.pitch/12*(D/2); const a=Math.atan2(riseR,D/2);
+        box(featG,-6,rh,0,W+12,2,D/2+4,rcol,{rotX:-a}); box(featG,-6,rh,D/2-4,W+12,2,D/2+4,rcol,{rotX:a}); }
+    }
+    // walls
+    if(P.walls!=='none'){ const wh=P.walls==='half'?P.rail:72, wc=T.wall;
+      box(featG,0,P.deckTop,-1,W,wh,1.5,wc);                         // uphill
+      if(P.walls==='full'){ // left wall with a window slot
+        box(featG,-1,P.deckTop,0,1.5,wh,D*0.35,wc); box(featG,-1,P.deckTop,D*0.6,1.5,wh,D*0.4,wc);
+        box(featG,W-0.5,P.deckTop,0,1.5,wh,D,wc);
+      } else { box(featG,-1,P.deckTop,0,1.5,wh,D,wc); box(featG,W-0.5,P.deckTop,0,1.5,wh,D,wc); }
+    }
+    // slide (long axis = Y, tilted like the ladder)
+    if(P.slide){ const gz=gradeZ(D),dy=P.deckTop-gz,run=40,len=Math.hypot(dy,run),ang=-Math.atan2(run,dy);
+      box(featG,W*0.85-9,(P.deckTop+gz)/2-len/2,D+run/2-1,18,len,2,COL_FIXED.slide,{rotX:ang}); }
+    // climbing wall (downhill face)
+    if(P.climb){ box(featG,W*0.15,gradeZ(D),D+1,28,P.deckTop-gradeZ(D),2,COL_FIXED.climb);
+      for(let i=0;i<10;i++){ const hx=W*0.15+4+(i%3)*9, hy=gradeZ(D)+10+Math.floor(i/3)*12; box(featG,hx,hy,D+3,2.5,2.5,2,0xddaa33); } }
+    // sandbox in downhill bay
+    if(P.sandbox){ const sgz=gradeZ(D*0.8); for(const [dx,dz2,sw,sl] of [[ -1,0,42,6],[41,0,6,42],[-1,40,42,6],[-1,0,6,42]]) box(featG,W/2-20+dx,sgz,D*0.6+dz2,sw,8,sl,COL_FIXED.sand); }
+  }
+  // ---- site & scale (any step) ----
+  if(P.kid){ const kx=W*0.32,kz=D*0.32,base=P.deckTop, kh=P.kidh; const c=COL_FIXED.kid;
+    box(siteG,kx-3,base,kz-2,2.5,kh*0.45,3,c); box(siteG,kx+0.5,base,kz-2,2.5,kh*0.45,3,c); // legs
+    box(siteG,kx-3.5,base+kh*0.45,kz-3,7,kh*0.35,5,c); // torso
+    const head=new THREE.Mesh(new THREE.SphereGeometry(kh*0.12*IN,16,16),mat(0xe9c39a)); head.position.set(kx*IN,(base+kh*0.86)*IN,kz*IN); head.castShadow=SHADOWS; siteG.add(head); }
+  if(P.tree2){ const tx=W+P.t2d,tz=D/2,g=gradeZ(tz); cyl(siteG,tx,g,tz,7,200,COL_FIXED.trunk);
+    const can=new THREE.Mesh(new THREE.SphereGeometry(40*IN,16,16),mat(0x6f8a5a)); can.position.set(tx*IN,(g+200)*IN,tz*IN); siteG.add(can);
+    if(P.bridge==='rope'){ for(let k=0;k<=Math.floor(P.t2d/12);k++){ const px=W+k*12; box(siteG,px,P.deckTop-1,tz-12,10,1,2,COL_FIXED.rope); }
+      line(siteG,[W,P.deckTop+18,tz-13],[tx,P.deckTop+18,tz-13],COL_FIXED.rope); line(siteG,[W,P.deckTop+18,tz+13],[tx,P.deckTop+18,tz+13],COL_FIXED.rope); }
+    if(P.bridge==='zip'){ line(siteG,[W/2,P.deckTop+60,tz],[tx,g+45,tz],COL_FIXED.hot); } }
+  // ---- ground ----
+  groundMesh=new THREE.Mesh(new THREE.BoxGeometry(300*IN,1*IN,300*IN), new THREE.MeshStandardMaterial({color:COL_FIXED.ground,roughness:1}));
+  groundMesh.position.set(W/2*IN,(gradeZ(D/2)-0.5)*IN,D/2*IN); groundMesh.rotation.x=Math.atan2(P.drop,D); groundMesh.receiveShadow=SHADOWS; world.add(groundMesh);
+  // ---- dimension overlay ----
+  if(P.dims){ const y=P.deckTop+2;
+    line(dimG,[0,y,-8],[W,y,-8],0x1d6fb8); sprite(dimG,(W/12).toFixed(1)+"'",W/2,y,-12);
+    line(dimG,[-8,y,0],[-8,y,D],0x1d6fb8); sprite(dimG,(D/12).toFixed(1)+"'",-12,y,D/2);
+    line(dimG,[W+8,gradeZ(D),D],[W+8,P.deckTop,D],0x1d6fb8); sprite(dimG,P.Hdown+'"',W+16,(P.deckTop+gradeZ(D))/2,D);
+    line(dimG,[-8,0,0],[-8,gradeZ(D),D],0x7a6a55); sprite(dimG,'drop '+P.drop.toFixed(0)+'"',-14,gradeZ(D)/2,D/2); }
+  applyView(); updateReadout();
 }
 
 function applyView(){
-  for(let i=1;i<=8;i++){ groups[i].visible = (i<=P.step) && !!visible[i];
-    groups[i].position.y = P.exp * i * 1.4; }            // explode: lift later groups
-  // recentre target on platform mid-height
-  ctr.target.set(P.W/2*IN, (P.deckTop/2)*IN, P.D/2*IN);
-  badge.innerHTML = `Step <b>${P.step}/8</b> — ${STEP_NAMES[P.step-1]}`;
+  for(let i=1;i<=8;i++){ groups[i].visible=(i<=P.step)&&!!visible[i]; groups[i].position.y=P.exp*i*1.4; }
+  world.rotation.y=P.sdir*Math.PI/180;
+  ctr.target.set(P.W/2*IN,(P.deckTop/2)*IN,P.D/2*IN);
+  ctr.autoRotate=P.autorot;
+  const STEPN=['Footings','Posts','Beams','Joists','Tree opening','Decking','Railing','Ladder & finish'];
+  badge.innerHTML=`Step <b>${P.step}/8</b> — ${STEPN[P.step-1]}`;
+  let warns=[]; if(!P.joistOK)warns.push('Joist span too long'); if(!P.beamOK)warns.push('Posts too far apart');
+  badge.innerHTML+= warns.length?`<div id="warnbar">⚠ ${warns.join(' · ')}</div>`:'';
+}
+// sun position from slider
+function setSun(){ const t=P.sun/100; const az=Math.PI*(0.15+1.7*t), el=Math.sin(Math.PI*t)*0.9+0.15;
+  sun.position.set(Math.cos(az)*30, 6+el*30, Math.sin(az)*22); vSun.textContent= t<0.25?'morning':t<0.4?'mid-morning':t<0.6?'noon':t<0.8?'afternoon':'evening'; }
+
+function cost(){
+  const wf=P.W/12,df=P.D/12;
+  const posts=P.ppl*2, postC=posts*PRICE[P.postSize];
+  const beamPc=Math.ceil(wf/8)*4, beamC=beamPc*PRICE[P.beamSize];
+  const jc=P.jx.length, joistPc=jc*Math.ceil(df/8), joistC=joistPc*PRICE[P.joistSize];
+  const deckPc=Math.ceil((wf*df)/((df)*(5.5/12))), deckC=deckPc*PRICE.deck;
+  const ftC=posts*(2.5*PRICE.bag+PRICE.tube+PRICE.base);
+  const railC=4*PRICE['4x4']+8*PRICE.rail+12*PRICE.bal;
+  let feat=0; if(P.roof!=='none')feat+=120; if(P.walls!=='none')feat+=P.walls==='full'?160:90; if(P.slide)feat+=90; if(P.climb)feat+=60; if(P.sandbox)feat+=50;
+  const total=postC+beamC+joistC+deckC+ftC+railC+PRICE.hwLump+feat;
+  return {total, posts, jc, deckPc};
 }
 
 function updateReadout(){
-  vDia.textContent=P.dia+'"'; vSlope.textContent=P.slope+'°';
-  vW.textContent=(P.W/12).toFixed(1)+' ft'; vD.textContent=(P.D/12).toFixed(1)+' ft';
-  vH.textContent=P.Hdown+'"'; vR.textContent=P.rail+'"'; vExp.textContent=(P.exp*100|0);
-  stepLbl.textContent = P.step+' · '+STEP_NAMES[P.step-1];
-  const area=(P.W/12)*(P.D/12);
-  const joistCount=P.jx.length;
-  const deckBoards=Math.ceil(area/( (P.D/12)*(5.5/12) )); // 5/4x6 boards running cross
-  const postsTotal=P.nx*2;
+  vDia.textContent=P.dia+'"'; vGap.textContent=P.gap+'"'; vSlope.textContent=P.slope+'°'; vSdir.textContent=P.sdir+'°';
+  vW.textContent=(P.W/12).toFixed(1)+' ft'; vD.textContent=(P.D/12).toFixed(1)+' ft'; vH.textContent=P.Hdown+'"'; vR.textContent=P.rail+'"';
+  vBg.textContent=P.bg+'"'; vPpl.textContent=P.ppl; vFoot.textContent=P.foot+'"'; vPitch.textContent=P.pitch+' / 12';
+  vKid.textContent=P.kidh+'"'; vT2.textContent=P.t2d+'"'; vExp.textContent=(P.exp*100|0);
+  stepLbl.textContent=P.step+' · '+['Footings','Posts','Beams','Joists','Tree opening','Decking','Railing','Finished'][P.step-1];
+  const c=cost();
+  const bgOK=P.bg<=4;
   const r=[
-    ['Grade drop across run', P.drop.toFixed(1)+'"'],
-    ['Deck height — uphill', P.Hup.toFixed(1)+'"'],
-    ['Deck height — downhill', P.Hdown+'"'],
-    ['Post (exposed) — uphill', (P.beamBot-0).toFixed(1)+'"'],
-    ['Post (exposed) — downhill', (P.beamBot-(-P.drop)).toFixed(1)+'"'],
-    ['Tree opening (sq)', P.open.toFixed(1)+'"'],
-    ['Clearance around trunk', '4" each side'],
-    ['Posts / footings', postsTotal],
-    ['Joists @'+P.oc+'" o.c.', joistCount],
-    ['Deck area', area.toFixed(0)+' sq ft'],
-    ['5/4×6 deck boards (≈)', deckBoards],
-    ['Beams', '2 × doubled 2×8'],
+    ['Grade drop across run',P.drop.toFixed(1)+'"'],
+    ['Deck height — uphill',P.Hup.toFixed(1)+'"'],
+    ['Deck height — downhill',P.Hdown+'"'],
+    ['Post (exposed) — downhill',(P.beamBot+P.drop).toFixed(1)+'"'],
+    ['Tree opening (sq)',P.open.toFixed(1)+'"'],
+    ['Posts / footings',c.posts],
+    ['Post spacing',`<span class="${P.beamOK?'ok':'warn'}">${P.postSpacing.toFixed(0)}" / ${P.bAllow}" max</span>`],
+    ['Joist span',`<span class="${P.joistOK?'ok':'warn'}">${P.D.toFixed(0)}" / ${P.jAllow}" max</span>`],
+    ['Joists @'+P.oc+'" o.c.',c.jc],
+    ['Baluster gap',`<span class="${bgOK?'ok':'warn'}">${P.bg}" ${bgOK?'(safe)':'(>4"!)'}</span>`],
+    ['Deck boards (≈)',c.deckPc],
   ];
   readout.innerHTML=r.map(([k,v])=>`<div><span>${k}</span><b>${v}</b></div>`).join('');
+  document.getElementById('cost').innerHTML=`est. <b>$${(c.total*0.9|0).toLocaleString()}–${(c.total*1.15|0).toLocaleString()}</b>`;
 }
 
-// ---- toggles ----
+// toggles
 const tWrap=document.getElementById('toggles');
-STEP_NAMES.slice(0,8).forEach((n,i)=>{ const b=document.createElement('button'); b.textContent=n; b.dataset.i=i+1;
-  b.onclick=()=>{ const k=i+1; visible[k]=visible[k]?0:1; b.classList.toggle('off',!visible[k]); applyView(); };
-  tWrap.appendChild(b); });
+['Footings','Posts','Beams','Joists','Opening','Decking','Railing','Ladder'].forEach((n,i)=>{ const b=document.createElement('button'); b.textContent=n; b.onclick=()=>{const k=i+1;visible[k]=visible[k]?0:1;b.classList.toggle('off',!visible[k]);applyView();}; tWrap.appendChild(b); });
 
-// ---- wire knobs ----
-['dia','slope','w','d','h','r','oc'].forEach(id=>document.getElementById(id).addEventListener('input',rebuild));
-['step','exp'].forEach(id=>document.getElementById(id).addEventListener('input',()=>{readParams();derive();
-  // step/explode don't need full rebuild except hot-highlight depends on step -> rebuild for highlight
-  rebuild();}));
-document.getElementById('prev').onclick=()=>{ step.value=Math.max(1,+step.value-1); rebuild(); };
-document.getElementById('next').onclick=()=>{ step.value=Math.min(8,+step.value+1); rebuild(); };
+// wire everything
+const allIds=['dia','gap','slope','sdir','w','d','h','r','bg','ppl','postSize','beamSize','joistSize','oc','foot','roof','pitch','walls','access','trapdoor','slide','climb','sandbox','kid','kidh','tree2','t2d','bridge','shadows','dims','xray','theme','step','exp'];
+allIds.forEach(id=>document.getElementById(id).addEventListener('input',rebuild));
+document.getElementById('sun').addEventListener('input',()=>{readParams();setSun();});
+document.getElementById('autorot').addEventListener('input',()=>{readParams();applyView();});
+document.getElementById('prev').onclick=()=>{step.value=Math.max(1,+step.value-1);rebuild();};
+document.getElementById('next').onclick=()=>{step.value=Math.min(8,+step.value+1);rebuild();};
 
-// query param presets (for headless screenshots): ?step=4&dia=20&slope=20...
+// query-param presets
 const q=new URLSearchParams(location.search);
-for(const id of ['dia','slope','w','d','h','r','oc','step','exp']) if(q.has(id)) document.getElementById(id).value=q.get(id);
+for(const id of allIds) if(q.has(id)){ const el=document.getElementById(id); if(el.type==='checkbox')el.checked=q.get(id)==='1'; else el.value=q.get(id); }
 
-resize(); rebuild();
+resize(); rebuild(); readParams(); setSun();
 (function loop(){ requestAnimationFrame(loop); ctr.update(); rnd.render(scene,cam); })();
 </script>
 </body>
