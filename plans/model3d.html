@@ -67,6 +67,7 @@
 
     <details class="grp"><summary>Engineering / lumber</summary>
       <div class="knob"><label>Posts per beam line <b id="vPpl">3</b></label><input id="ppl" type="range" min="2" max="5" step="1" value="3"></div>
+      <div class="knob"><label>Post inset / overhang <b id="vOh">0"</b></label><input id="oh" type="range" min="0" max="36" step="1" value="0"></div>
       <div class="knob"><label>Post size</label><select id="postSize"><option>4x4</option><option selected>6x6</option></select></div>
       <div class="knob"><label>Beam (doubled)</label><select id="beamSize"><option>2x6</option><option selected>2x8</option><option>2x10</option></select></div>
       <div class="knob"><label>Joist size</label><select id="joistSize"><option>2x6</option><option selected>2x8</option><option>2x10</option></select></div>
@@ -194,7 +195,7 @@ function readParams(){
   const g=id=>document.getElementById(id);
   P.dia=+g('dia').value; P.gap=+g('gap').value; P.slope=+g('slope').value; P.sdir=+g('sdir').value;
   P.W=+g('w').value*12; P.D=+g('d').value*12; P.Hdown=+g('h').value; P.rail=+g('r').value; P.bg=+g('bg').value;
-  P.ppl=+g('ppl').value; P.postSize=g('postSize').value; P.beamSize=g('beamSize').value; P.joistSize=g('joistSize').value; P.oc=+g('oc').value; P.foot=+g('foot').value;
+  P.ppl=+g('ppl').value; P.oh=+g('oh').value; P.postSize=g('postSize').value; P.beamSize=g('beamSize').value; P.joistSize=g('joistSize').value; P.oc=+g('oc').value; P.foot=+g('foot').value;
   P.roof=g('roof').value; P.pitch=+g('pitch').value; P.walls=g('walls').value; P.access=g('access').value;
   P.trapdoor=g('trapdoor').checked; P.slide=g('slide').checked; P.climb=g('climb').checked; P.sandbox=g('sandbox').checked;
   P.kid=g('kid').checked; P.kidh=+g('kidh').value; P.tree2=g('tree2').checked; P.t2d=+g('t2d').value; P.bridge=g('bridge').value;
@@ -207,12 +208,19 @@ function derive(){
   P.deckTop=-P.drop+P.Hdown; P.Hup=P.deckTop;
   P.beamBot=P.deckTop-1-P.jd-P.bd;
   P.open=P.dia+2*P.gap;
-  P.px=[]; for(let i=0;i<P.ppl;i++)P.px.push(P.W*i/(P.ppl-1));
-  P.postSpacing=P.W/(P.ppl-1);
+  const oh=Math.min(P.oh, P.W/2-6, P.D/2-6); P.oh=oh;        // clamp so posts can't cross
+  P.px=[]; for(let i=0;i<P.ppl;i++)P.px.push(oh+(P.W-2*oh)*i/(P.ppl-1));
+  P.postZ=[oh, P.D-oh];
+  P.bay=(P.W-2*oh)/(P.ppl-1); P.postSpacing=P.bay;
+  P.jSpan=P.D-2*oh;                                          // joist backspan (between beams)
   P.jx=[]; for(let x=0;x<=P.W+0.1;x+=P.oc)P.jx.push(Math.min(x,P.W)); if(P.jx[P.jx.length-1]<P.W-0.1)P.jx.push(P.W);
-  // span checks
-  P.jAllow=JSPAN[P.joistSize][P.oc]; P.joistOK=P.D<=P.jAllow;
-  P.bAllow=BSPAN[P.beamSize]; P.beamOK=P.postSpacing<=P.bAllow;
+  // span checks use the backspan, not the full deck
+  P.jAllow=JSPAN[P.joistSize][P.oc]; P.joistOK=P.jSpan<=P.jAllow;
+  P.bAllow=BSPAN[P.beamSize]; P.beamOK=P.bay<=P.bAllow;
+  // cantilever: 1/4-of-backspan rule + absolute cap by joist size
+  P.jCap={'2x6':16,'2x8':24,'2x10':32}[P.joistSize];
+  P.jCantMax=Math.min(P.jSpan/4,P.jCap); P.jCantOK=oh<=P.jCantMax+0.01;
+  P.bCantMax=P.bay/4; P.bCantOK=oh<=P.bCantMax+0.01;
 }
 
 function rebuild(){
@@ -223,15 +231,15 @@ function rebuild(){
   const T=THEMES[THEME];
   const W=P.W,D=P.D,bb=P.beamBot, o0=W/2-P.open/2,o1=W/2+P.open/2,oz0=D/2-P.open/2,oz1=D/2+P.open/2;
   const gradeZ=z=>-P.drop*(z/D), hotS=s=>P.step===s;
-  // 1 footings
-  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(groups[1],px-4,g-P.foot,pz-4,8,P.foot,8,COL_FIXED.footing,{hot:hotS(1)}); }
+  // 1 footings (posts inset by overhang)
+  for(const px of P.px) for(const pz of P.postZ){ const g=gradeZ(pz); box(groups[1],px-4,g-P.foot,pz-4,8,P.foot,8,COL_FIXED.footing,{hot:hotS(1)}); }
   // 2 posts
-  for(const px of P.px) for(const pz of [0,D]){ const g=gradeZ(pz); box(groups[2],px-P.pw/2,g,pz-P.pw/2,P.pw,bb-g,P.pw,T.post,{hot:hotS(2)}); }
-  // 3 beams (doubled)
-  const bcol=P.beamOK?T.beam:COL_FIXED.hot;
-  for(const pz of [0,D]){ box(groups[3],0,bb,pz-P.bd/2,W,P.bd,P.bt,bcol,{hot:hotS(3)}); box(groups[3],0,bb,pz+P.bd/2-P.bt,W,P.bd,P.bt,bcol,{hot:hotS(3)}); }
-  // 4 joists
-  const jtop=bb+P.bd, jcol=P.joistOK?T.joist:COL_FIXED.hot;
+  for(const px of P.px) for(const pz of P.postZ){ const g=gradeZ(pz); box(groups[2],px-P.pw/2,g,pz-P.pw/2,P.pw,bb-g,P.pw,T.post,{hot:hotS(2)}); }
+  // 3 beams (doubled) — sit on the inset post lines, can cantilever past end posts in X
+  const bcol=(P.beamOK&&P.bCantOK)?T.beam:COL_FIXED.hot;
+  for(const pz of P.postZ){ box(groups[3],0,bb,pz-P.bd/2,W,P.bd,P.bt,bcol,{hot:hotS(3)}); box(groups[3],0,bb,pz+P.bd/2-P.bt,W,P.bd,P.bt,bcol,{hot:hotS(3)}); }
+  // 4 joists — span the full deck, cantilevering past the beams
+  const jtop=bb+P.bd, jcol=(P.joistOK&&P.jCantOK)?T.joist:COL_FIXED.hot;
   for(const x of P.jx){ const io=x>o0-1&&x<o1+1;
     if(io){ box(groups[4],x-P.jt/2,jtop,0,P.jt,P.jd,oz0,jcol,{hot:hotS(4)}); box(groups[4],x-P.jt/2,jtop,oz1,P.jt,P.jd,D-oz1,jcol,{hot:hotS(4)}); }
     else box(groups[4],x-P.jt/2,jtop,0,P.jt,P.jd,D,jcol,{hot:hotS(4)}); }
@@ -319,6 +327,7 @@ function applyView(){
   const STEPN=['Footings','Posts','Beams','Joists','Tree opening','Decking','Railing','Ladder & finish'];
   badge.innerHTML=`Step <b>${P.step}/8</b> — ${STEPN[P.step-1]}`;
   let warns=[]; if(!P.joistOK)warns.push('Joist span too long'); if(!P.beamOK)warns.push('Posts too far apart');
+  if(!P.jCantOK)warns.push('Deck overhang too far (joists)'); if(!P.bCantOK)warns.push('Deck overhang too far (beams)');
   badge.innerHTML+= warns.length?`<div id="warnbar">⚠ ${warns.join(' · ')}</div>`:'';
 }
 // sun position from slider
@@ -341,7 +350,7 @@ function cost(){
 function updateReadout(){
   vDia.textContent=P.dia+'"'; vGap.textContent=P.gap+'"'; vSlope.textContent=P.slope+'°'; vSdir.textContent=P.sdir+'°';
   vW.textContent=(P.W/12).toFixed(1)+' ft'; vD.textContent=(P.D/12).toFixed(1)+' ft'; vH.textContent=P.Hdown+'"'; vR.textContent=P.rail+'"';
-  vBg.textContent=P.bg+'"'; vPpl.textContent=P.ppl; vFoot.textContent=P.foot+'"'; vPitch.textContent=P.pitch+' / 12';
+  vBg.textContent=P.bg+'"'; vPpl.textContent=P.ppl; vOh.textContent=P.oh+'"'; vFoot.textContent=P.foot+'"'; vPitch.textContent=P.pitch+' / 12';
   vKid.textContent=P.kidh+'"'; vT2.textContent=P.t2d+'"'; vExp.textContent=(P.exp*100|0);
   stepLbl.textContent=P.step+' · '+['Footings','Posts','Beams','Joists','Tree opening','Decking','Railing','Finished'][P.step-1];
   const c=cost();
@@ -350,11 +359,14 @@ function updateReadout(){
     ['Grade drop across run',P.drop.toFixed(1)+'"'],
     ['Deck height — uphill',P.Hup.toFixed(1)+'"'],
     ['Deck height — downhill',P.Hdown+'"'],
-    ['Post (exposed) — downhill',(P.beamBot+P.drop).toFixed(1)+'"'],
+    ['Post (exposed) — downhill',(P.beamBot+P.drop*(P.D-P.oh)/P.D).toFixed(1)+'"'],
     ['Tree opening (sq)',P.open.toFixed(1)+'"'],
     ['Posts / footings',c.posts],
-    ['Post spacing',`<span class="${P.beamOK?'ok':'warn'}">${P.postSpacing.toFixed(0)}" / ${P.bAllow}" max</span>`],
-    ['Joist span',`<span class="${P.joistOK?'ok':'warn'}">${P.D.toFixed(0)}" / ${P.jAllow}" max</span>`],
+    ['Overhang (each side)', P.oh? `${P.oh}" (${(P.oh/12).toFixed(2)} ft)` : 'none'],
+    ['Joist back-span',`<span class="${P.joistOK?'ok':'warn'}">${P.jSpan.toFixed(0)}" / ${P.jAllow}" max</span>`],
+    ['› joist overhang', P.oh? `<span class="${P.jCantOK?'ok':'warn'}">${P.oh}" / ${P.jCantMax.toFixed(0)}" max</span>` : '—'],
+    ['Beam bay (post→post)',`<span class="${P.beamOK?'ok':'warn'}">${P.postSpacing.toFixed(0)}" / ${P.bAllow}" max</span>`],
+    ['› beam overhang', P.oh? `<span class="${P.bCantOK?'ok':'warn'}">${P.oh}" / ${P.bCantMax.toFixed(0)}" max</span>` : '—'],
     ['Joists @'+P.oc+'" o.c.',c.jc],
     ['Baluster gap',`<span class="${bgOK?'ok':'warn'}">${P.bg}" ${bgOK?'(safe)':'(>4"!)'}</span>`],
     ['Deck boards (≈)',c.deckPc],
@@ -368,7 +380,7 @@ const tWrap=document.getElementById('toggles');
 ['Footings','Posts','Beams','Joists','Opening','Decking','Railing','Ladder'].forEach((n,i)=>{ const b=document.createElement('button'); b.textContent=n; b.onclick=()=>{const k=i+1;visible[k]=visible[k]?0:1;b.classList.toggle('off',!visible[k]);applyView();}; tWrap.appendChild(b); });
 
 // wire everything
-const allIds=['dia','gap','slope','sdir','w','d','h','r','bg','ppl','postSize','beamSize','joistSize','oc','foot','roof','pitch','walls','access','trapdoor','slide','climb','sandbox','kid','kidh','tree2','t2d','bridge','shadows','dims','xray','theme','step','exp'];
+const allIds=['dia','gap','slope','sdir','w','d','h','r','bg','ppl','oh','postSize','beamSize','joistSize','oc','foot','roof','pitch','walls','access','trapdoor','slide','climb','sandbox','kid','kidh','tree2','t2d','bridge','shadows','dims','xray','theme','step','exp'];
 allIds.forEach(id=>document.getElementById(id).addEventListener('input',rebuild));
 document.getElementById('sun').addEventListener('input',()=>{readParams();setSun();});
 document.getElementById('autorot').addEventListener('input',()=>{readParams();applyView();});
